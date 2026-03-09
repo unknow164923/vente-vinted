@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlipCalc — Estimations & Gains Réels</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f2eb;
+  --bg2: #ece8df;
+  --ink: #1a1714;
+  --ink2: #3d3830;
+  --muted: #9a9080;
+  --border: #d4cfc4;
+  --est: #e8a020;
+  --est-bg: #fff8ec;
+  --est-border: #f0d090;
+  --real: #1a7a4a;
+  --real-bg: #edf7f2;
+  --real-border: #a8dcc0;
+  --neg: #c0392b;
+  --neg-bg: #fdf0ee;
+  --surface: #ffffff;
+  --shadow: 0 2px 12px rgba(26,23,20,0.08);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--ink); font-family:'Fira Code',monospace; min-height:100vh; }
+
+/* NAV */
+.nav {
+  position:sticky; top:0; z-index:100;
+  background:var(--bg); border-bottom:2px solid var(--ink);
+  display:flex; align-items:stretch;
+}
+.nav-brand {
+  padding:0 24px;
+  font-family:'Bricolage Grotesque',sans-serif;
+  font-weight:800; font-size:16px;
+  display:flex; align-items:center; gap:8px;
+  border-right:2px solid var(--ink);
+  white-space:nowrap;
+}
+.brand-dot { width:9px;height:9px;background:var(--est);border-radius:50%; }
+.nav-tabs { display:flex; flex:1; }
+.tab-btn {
+  flex:1; padding:16px 12px;
+  background:none; border:none; border-right:1px solid var(--border);
+  cursor:pointer; font-family:'Fira Code',monospace;
+  font-size:11px; font-weight:600; color:var(--muted);
+  letter-spacing:0.06em; text-transform:uppercase;
+  transition:all .2s; display:flex; align-items:center;
+  justify-content:center; gap:6px;
+}
+.tab-btn:last-child{border-right:none;}
+.tab-btn:hover{background:var(--bg2);color:var(--ink);}
+.tab-btn.active{background:var(--surface);color:var(--ink);}
+.tab-btn.t-est.active{box-shadow:inset 0 -3px 0 var(--est);}
+.tab-btn.t-real.active{box-shadow:inset 0 -3px 0 var(--real);}
+.tab-btn.t-set.active{box-shadow:inset 0 -3px 0 #8b5cf6;}
+
+/* PAGES */
+.page{display:none;padding:32px 20px;max-width:820px;margin:0 auto;}
+.page.active{display:block;}
+
+/* HEADERS */
+.sec-header{margin-bottom:24px;}
+.sec-tag{display:inline-block;padding:3px 10px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;margin-bottom:8px;}
+.tag-est{background:var(--est-bg);color:var(--est);border:1px solid var(--est-border);}
+.tag-real{background:var(--real-bg);color:var(--real);border:1px solid var(--real-border);}
+.sec-title{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(24px,4vw,36px);letter-spacing:-.02em;line-height:1.1;}
+.sec-desc{font-size:11px;color:var(--muted);margin-top:4px;letter-spacing:.03em;}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:14px;}
+.card-hd{padding:13px 20px;border-bottom:1px solid var(--border);font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);}
+.card-bd{padding:20px;}
+
+/* FORM */
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:540px){.fg{grid-template-columns:1fr;}}
+.ff{grid-column:1/-1;}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);}
+.iw{position:relative;}
+.iw input,.iw select{
+  width:100%;padding:10px 34px 10px 12px;
+  background:var(--bg);border:1.5px solid var(--border);border-radius:7px;
+  font-family:'Fira Code',monospace;font-size:13px;font-weight:500;color:var(--ink);
+  outline:none;transition:border-color .2s,box-shadow .2s;
+  -moz-appearance:textfield;
+}
+.iw input::-webkit-outer-spin-button,.iw input::-webkit-inner-spin-button{-webkit-appearance:none;}
+.iw input:focus,.iw select:focus{border-color:var(--ink);background:var(--surface);box-shadow:0 0 0 3px rgba(26,23,20,.05);}
+.iw input.fe:focus{border-color:var(--est);box-shadow:0 0 0 3px rgba(232,160,32,.1);}
+.iw input.fr:focus{border-color:var(--real);box-shadow:0 0 0 3px rgba(26,122,74,.1);}
+.sfx{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--muted);pointer-events:none;}
+.iw select{padding-right:12px;appearance:none;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%239a9080' d='M5 7L0 2h10z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 9px center;}
+select option{background:white;}
+.pf-pair{display:grid;grid-template-columns:1fr 90px;gap:8px;}
+
+/* FEES */
+.fbreak{margin-bottom:12px;padding:12px 14px;background:var(--bg);border-radius:8px;border:1px solid var(--border);}
+.frow{display:flex;justify-content:space-between;font-size:11px;padding:4px 0;color:var(--ink2);border-bottom:1px dashed var(--border);}
+.frow:last-child{border:none;font-weight:700;font-size:12px;}
+
+/* RESULT BOX */
+.rbox{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);border-radius:8px;overflow:hidden;}
+.rcell{padding:14px 14px;display:flex;flex-direction:column;gap:3px;}
+.rcell.c-est{background:var(--est-bg);}
+.rcell.c-real{background:var(--real-bg);}
+.rcell.c-neu{background:var(--bg2);}
+.rl{font-size:8px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);}
+.rv{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:20px;letter-spacing:-.02em;transition:color .3s;}
+.rv.pos{color:var(--real);}
+.rv.neg{color:var(--neg);}
+.rv.ec{color:var(--est);}
+.rv.nc{color:var(--ink2);}
+
+/* DIFF BOX */
+.diff-box{display:none;margin-top:12px;padding:14px;border-radius:8px;background:var(--bg2);border:1px solid var(--border);font-size:11px;}
+.diff-title{font-weight:700;margin-bottom:8px;letter-spacing:.05em;font-size:10px;text-transform:uppercase;color:var(--muted);}
+
+/* BTNS */
+.btn{padding:11px 20px;border-radius:7px;border:none;cursor:pointer;font-family:'Fira Code',monospace;font-size:11px;font-weight:700;letter-spacing:.06em;transition:all .2s;display:inline-flex;align-items:center;gap:7px;}
+.btn-est{background:var(--est);color:white;}
+.btn-est:hover{background:#d4901a;transform:translateY(-1px);box-shadow:0 6px 18px rgba(232,160,32,.3);}
+.btn-real{background:var(--real);color:white;}
+.btn-real:hover{background:#156039;transform:translateY(-1px);box-shadow:0 6px 18px rgba(26,122,74,.3);}
+.btn-ghost{background:transparent;color:var(--muted);border:1.5px solid var(--border);}
+.btn-ghost:hover{color:var(--ink);border-color:var(--ink);background:var(--bg2);}
+.btn:active{transform:translateY(0)!important;}
+.brow{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+
+/* DASHBOARD */
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;}
+@media(max-width:540px){.dash-grid{grid-template-columns:1fr;}}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;box-shadow:var(--shadow);position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.kpi-e::before{background:var(--est);}
+.kpi-r::before{background:var(--real);}
+.kpi-p::before{background:var(--ink);}
+.kpi-t::before{background:#8b5cf6;}
+.kpi-label{font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.kpi-val{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:32px;letter-spacing:-.02em;line-height:1;margin-bottom:4px;}
+.kpi-sub{font-size:10px;color:var(--muted);}
+.rate-bar-bg{height:7px;background:var(--bg2);border-radius:4px;overflow:hidden;margin-top:12px;}
+.rate-bar-fill{height:100%;background:#8b5cf6;border-radius:4px;transition:width .6s cubic-bezier(.34,1.56,.64,1);}
+
+/* COMPARE TABLE */
+.ctable{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:20px;}
+.ct-hd{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 80px;padding:10px 16px;background:var(--bg2);border-bottom:1px solid var(--border);font-size:8px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);gap:8px;}
+.ct-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 80px;padding:13px 16px;border-bottom:1px solid var(--border);font-size:11px;gap:8px;align-items:center;transition:background .15s;}
+.ct-row:last-child{border:none;}
+.ct-row:hover{background:var(--bg);}
+.ct-name{font-weight:600;}
+.ct-ev{color:var(--est);font-weight:600;}
+.ct-rv{font-weight:700;}
+.ct-rv.pos{color:var(--real);}
+.ct-rv.neg{color:var(--neg);}
+.ct-rv.pend{color:var(--muted);font-style:italic;}
+.delta{font-size:10px;padding:3px 7px;border-radius:4px;font-weight:700;text-align:center;}
+.delta.up{background:var(--real-bg);color:var(--real);}
+.delta.dn{background:var(--neg-bg);color:var(--neg);}
+.delta.pend{background:var(--bg2);color:var(--muted);}
+.badge{font-size:9px;padding:3px 8px;border-radius:20px;font-weight:700;text-align:center;letter-spacing:.05em;}
+.b-pend{background:var(--est-bg);color:var(--est);}
+.b-sold{background:var(--real-bg);color:var(--real);}
+.empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:12px;}
+.empty-ico{font-size:32px;margin-bottom:10px;}
+@media(max-width:580px){
+  .ct-hd,.ct-row{grid-template-columns:1.5fr 1fr 1fr;}
+  .ct-hd>*:nth-child(4),.ct-row>*:nth-child(4),
+  .ct-hd>*:nth-child(5),.ct-row>*:nth-child(5){display:none;}
+}
+
+/* SHEETS */
+.sheets-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);}
+.s-toggle{padding:15px 20px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;font-size:13px;font-weight:700;font-family:'Bricolage Grotesque',sans-serif;}
+.s-toggle:hover{background:var(--bg);}
+.s-body{display:none;padding:20px;border-top:1px solid var(--border);}
+.s-body.open{display:block;}
+.s-url-row{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:12px;}
+.smsg{padding:9px 13px;border-radius:7px;font-size:11px;display:none;margin-top:10px;}
+.smsg.ok{display:block;background:var(--real-bg);color:var(--real);border:1px solid var(--real-border);}
+.smsg.err{display:block;background:var(--neg-bg);color:var(--neg);border:1px solid #f5c5c0;}
+.smsg.load{display:block;background:var(--est-bg);color:var(--est);border:1px solid var(--est-border);}
+.code-blk{margin-top:14px;background:#1a1714;color:#a8ffb0;padding:14px;border-radius:8px;font-size:10px;line-height:1.7;overflow-x:auto;white-space:pre;}
+.steps{margin-top:12px;font-size:11px;color:var(--ink2);line-height:1.9;padding-left:14px;}
+.steps li{margin-bottom:2px;}
+code{background:var(--bg2);padding:1px 5px;border-radius:3px;font-size:10px;color:var(--est);}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--ink);color:white;border-radius:9px;padding:12px 18px;font-size:12px;font-weight:600;transform:translateY(70px);opacity:0;transition:all .35s cubic-bezier(.34,1.56,.64,1);z-index:9999;max-width:280px;box-shadow:0 8px 24px rgba(26,23,20,.2);}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.ok{border-left:4px solid var(--real);}
+.toast.err{border-left:4px solid var(--neg);}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+.page.active>*{animation:fadeUp .35s ease both;}
+.page.active>*:nth-child(1){animation-delay:0ms;}
+.page.active>*:nth-child(2){animation-delay:60ms;}
+.page.active>*:nth-child(3){animation-delay:110ms;}
+.page.active>*:nth-child(4){animation-delay:160ms;}
+
+/* ── SETTINGS ── */
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:540px){.settings-grid{grid-template-columns:1fr;}}
+
+.theme-section-title{
+  font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:14px;padding-bottom:8px;
+  border-bottom:1px solid var(--border);
+}
+
+.palette-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.palette-grid.wide{grid-template-columns:repeat(4,1fr);}
+
+.pal-btn{
+  border:2px solid transparent;border-radius:10px;
+  cursor:pointer;padding:10px 8px;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  transition:all .2s;background:none;
+  font-family:'Fira Code',monospace;
+}
+.pal-btn:hover{transform:translateY(-2px);}
+.pal-btn.active-theme{border-color:var(--ink)!important;box-shadow:0 4px 14px rgba(0,0,0,.15);}
+
+.pal-preview{
+  width:100%;height:44px;border-radius:7px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;letter-spacing:.05em;
+  border:1px solid rgba(0,0,0,.08);
+}
+.pal-name{font-size:9px;font-weight:600;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;}
+
+.accent-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.acc-btn{
+  border:2px solid transparent;border-radius:8px;cursor:pointer;
+  padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:5px;
+  transition:all .2s;background:none;font-family:'Fira Code',monospace;
+}
+.acc-btn:hover{transform:translateY(-2px);}
+.acc-btn.active-accent{border-color:var(--ink)!important;}
+.acc-swatch{width:100%;height:28px;border-radius:6px;}
+.acc-name{font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;}
+
+.preview-box{
+  margin-top:16px;padding:16px;border-radius:10px;
+  background:var(--bg2);border:1px solid var(--border);
+  font-size:11px;color:var(--muted);text-align:center;letter-spacing:.05em;
+}
+
+.reset-btn{
+  margin-top:16px;width:100%;padding:11px;border-radius:7px;
+  border:1.5px solid var(--border);background:none;cursor:pointer;
+  font-family:'Fira Code',monospace;font-size:11px;font-weight:600;
+  color:var(--muted);transition:all .2s;letter-spacing:.06em;
+}
+.reset-btn:hover{color:var(--neg);border-color:var(--neg);background:var(--neg-bg);}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand"><span class="brand-dot"></span>FlipCalc</div>
+  <div class="nav-tabs">
+    <button class="tab-btn t-est active" data-tab="estimation">📋 Estimation</button>
+    <button class="tab-btn t-real" data-tab="reel">✅ Gains réels</button>
+    <button class="tab-btn t-dash" data-tab="dashboard">📊 Tableau de bord</button>
+    <button class="tab-btn t-set" data-tab="settings">⚙️ Paramètres</button>
+  </div>
+</nav>
+
+<!-- ═══ ESTIMATION ═══ -->
+<div class="page active" id="page-estimation">
+  <div class="sec-header">
+    <span class="sec-tag tag-est">Prévision</span>
+    <div class="sec-title">Estimation</div>
+    <div class="sec-desc">// calcule ton profit avant d'acheter</div>
+  </div>
+
+  <div class="card">
+    <div class="card-hd">📦 Infos article</div>
+    <div class="card-bd">
+      <div class="fg">
+        <div class="field ff">
+          <label>Nom de l'article</label>
+          <div class="iw"><input type="text" id="e-name" placeholder="ex: Nike Air Max 90 – T42"></div>
+        </div>
+        <div class="field">
+          <label>Prix d'achat</label>
+          <div class="iw"><input class="fe" type="number" id="e-buy" placeholder="0.00" step="0.01" oninput="calcEst()"><span class="sfx">€</span></div>
+        </div>
+        <div class="field">
+          <label>Prix de vente estimé</label>
+          <div class="iw"><input class="fe" type="number" id="e-sell" placeholder="0.00" step="0.01" oninput="calcEst()"><span class="sfx">€</span></div>
+        </div>
+        <div class="field">
+          <label>Frais de livraison</label>
+          <div class="iw"><input class="fe" type="number" id="e-ship" placeholder="0.00" step="0.01" oninput="calcEst()" value="0"><span class="sfx">€</span></div>
+        </div>
+        <div class="field">
+          <label>Plateforme & commission</label>
+          <div class="pf-pair">
+            <div class="iw">
+              <select id="e-plat" onchange="setPlatEst()">
+                <option value="custom">Personnalisé</option>
+                <option value="vinted">Vinted (5%)</option>
+                <option value="ebay">eBay (12.8%)</option>
+                <option value="leboncoin">Leboncoin (7%)</option>
+                <option value="vestiaire">Vestiaire (15%)</option>
+                <option value="depop">Depop (10%)</option>
+                <option value="etsy">Etsy (6.5%)</option>
+              </select>
+            </div>
+            <div class="iw"><input class="fe" type="number" id="e-pct" placeholder="0" step="0.1" oninput="calcEst()" value="0"><span class="sfx">%</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hd">⚡ Résultat estimé</div>
+    <div class="card-bd">
+      <div class="fbreak">
+        <div class="frow"><span>Livraison</span><span id="e-b-ship">0.00 €</span></div>
+        <div class="frow"><span>Commission plateforme</span><span id="e-b-comm">0.00 €</span></div>
+        <div class="frow"><span>Total frais</span><span id="e-b-total">0.00 €</span></div>
+      </div>
+      <div class="rbox">
+        <div class="rcell c-est"><div class="rl">Profit estimé</div><div class="rv ec" id="e-profit">0.00 €</div></div>
+        <div class="rcell c-neu"><div class="rl">Marge</div><div class="rv nc" id="e-margin">—</div></div>
+        <div class="rcell c-neu"><div class="rl">ROI</div><div class="rv nc" id="e-roi">—</div></div>
+      </div>
+      <div class="brow">
+        <button class="btn btn-est" onclick="saveEst()">📋 Enregistrer l'estimation</button>
+        <button class="btn btn-ghost" onclick="resetEst()">↺ Reset</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ GAINS RÉELS ═══ -->
+<div class="page" id="page-reel">
+  <div class="sec-header">
+    <span class="sec-tag tag-real">Confirmé</span>
+    <div class="sec-title">Gains réels</div>
+    <div class="sec-desc">// enregistre une vente conclue</div>
+  </div>
+
+  <div class="card">
+    <div class="card-hd">🔗 Lier à une estimation (optionnel)</div>
+    <div class="card-bd">
+      <div class="field">
+        <label>Choisir une estimation</label>
+        <div class="iw">
+          <select id="r-link" onchange="loadFromEst()">
+            <option value="">— Nouvelle entrée manuelle —</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hd">💰 Vente réelle</div>
+    <div class="card-bd">
+      <div class="fg">
+        <div class="field ff">
+          <label>Nom de l'article</label>
+          <div class="iw"><input type="text" id="r-name" placeholder="ex: Nike Air Max 90 – T42"></div>
+        </div>
+        <div class="field">
+          <label>Prix d'achat réel</label>
+          <div class="iw"><input class="fr" type="number" id="r-buy" placeholder="0.00" step="0.01" oninput="calcReal()"><span class="sfx">€</span></div>
+        </div>
+        <div class="field">
+          <label>Prix de vente réel</label>
+          <div class="iw"><input class="fr" type="number" id="r-sell" placeholder="0.00" step="0.01" oninput="calcReal()"><span class="sfx">€</span></div>
+        </div>
+        <div class="field">
+          <label>Frais de livraison</label>
+          <div class="iw"><input class="fr" type="number" id="r-ship" placeholder="0.00" step="0.01" oninput="calcReal()" value="0"><span class="sfx">€</span></div>
+        </div>
+        <div class="field">
+          <label>Plateforme & commission</label>
+          <div class="pf-pair">
+            <div class="iw">
+              <select id="r-plat" onchange="setPlatReal()">
+                <option value="custom">Personnalisé</option>
+                <option value="vinted">Vinted (5%)</option>
+                <option value="ebay">eBay (12.8%)</option>
+                <option value="leboncoin">Leboncoin (7%)</option>
+                <option value="vestiaire">Vestiaire (15%)</option>
+                <option value="depop">Depop (10%)</option>
+                <option value="etsy">Etsy (6.5%)</option>
+              </select>
+            </div>
+            <div class="iw"><input class="fr" type="number" id="r-pct" placeholder="0" step="0.1" oninput="calcReal()" value="0"><span class="sfx">%</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hd">✅ Résultat réel</div>
+    <div class="card-bd">
+      <div class="fbreak">
+        <div class="frow"><span>Livraison</span><span id="r-b-ship">0.00 €</span></div>
+        <div class="frow"><span>Commission plateforme</span><span id="r-b-comm">0.00 €</span></div>
+        <div class="frow"><span>Total frais</span><span id="r-b-total">0.00 €</span></div>
+      </div>
+      <div class="rbox">
+        <div class="rcell c-real"><div class="rl">Profit réel</div><div class="rv pos" id="r-profit">0.00 €</div></div>
+        <div class="rcell c-neu"><div class="rl">Marge</div><div class="rv nc" id="r-margin">—</div></div>
+        <div class="rcell c-neu"><div class="rl">ROI</div><div class="rv nc" id="r-roi">—</div></div>
+      </div>
+      <!-- diff box -->
+      <div class="diff-box" id="diff-box">
+        <div class="diff-title">↔ Écart vs estimation</div>
+        <div class="frow"><span>Profit estimé</span><span id="diff-est">—</span></div>
+        <div class="frow"><span>Profit réel</span><span id="diff-real">—</span></div>
+        <div class="frow" style="font-weight:700"><span>Différence</span><span id="diff-delta">—</span></div>
+      </div>
+      <div class="brow">
+        <button class="btn btn-real" onclick="saveReal()">✅ Confirmer la vente</button>
+        <button class="btn btn-ghost" onclick="resetReal()">↺ Reset</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ DASHBOARD ═══ -->
+<div class="page" id="page-dashboard">
+  <div class="sec-header">
+    <div class="sec-title">Tableau de bord</div>
+    <div class="sec-desc">// vue globale estimations vs gains réels</div>
+  </div>
+
+  <div class="dash-grid">
+    <div class="kpi kpi-e">
+      <div class="kpi-label">Total profit estimé</div>
+      <div class="kpi-val" id="kpi-et" style="color:var(--est)">0.00 €</div>
+      <div class="kpi-sub" id="kpi-ec">0 article(s) en prévision</div>
+    </div>
+    <div class="kpi kpi-r">
+      <div class="kpi-label">Total gains réels</div>
+      <div class="kpi-val" id="kpi-rt" style="color:var(--real)">0.00 €</div>
+      <div class="kpi-sub" id="kpi-rc">0 vente(s) confirmée(s)</div>
+    </div>
+    <div class="kpi kpi-p">
+      <div class="kpi-label">Articles en cours</div>
+      <div class="kpi-val" id="kpi-pend">0</div>
+      <div class="kpi-sub">estimations non encore vendues</div>
+    </div>
+    <div class="kpi kpi-t">
+      <div class="kpi-label">Taux de réalisation</div>
+      <div class="kpi-val" id="kpi-rate" style="color:#8b5cf6">—</div>
+      <div class="kpi-sub">profit réel vs estimé (ventes liées)</div>
+      <div class="rate-bar-bg"><div class="rate-bar-fill" id="rate-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <div class="ctable">
+    <div class="ct-hd">
+      <span>Article</span>
+      <span>Estimé</span>
+      <span>Réel</span>
+      <span>Écart</span>
+      <span>Statut</span>
+    </div>
+    <div id="ct-body">
+      <div class="empty"><div class="empty-ico">📭</div>Aucune donnée — commence par enregistrer une estimation !</div>
+    </div>
+  </div>
+
+  <!-- Sheets config -->
+  <div class="sheets-panel">
+    <div class="s-toggle" onclick="toggleSheets()">
+      <span>📊 Synchronisation Google Sheets</span>
+      <span id="s-arrow">▾</span>
+    </div>
+    <div class="s-body" id="s-body">
+      <div class="s-url-row">
+        <div class="iw"><input type="text" id="webhook" placeholder="https://script.google.com/macros/s/..."></div>
+        <button class="btn btn-ghost" onclick="testHook()">Tester</button>
+      </div>
+      <div class="smsg" id="smsg"></div>
+      <div style="margin-top:16px;font-size:11px;color:var(--ink2);">
+        <strong style="font-family:'Bricolage Grotesque',sans-serif;font-size:13px;">Setup en 2 minutes :</strong>
+        <ol class="steps">
+          <li>Ouvre <strong>Google Sheets</strong> → nouveau fichier</li>
+          <li>Menu <code>Extensions</code> → <code>Apps Script</code></li>
+          <li>Colle le code ci-dessous → <code>Déployer</code> → <code>Nouveau déploiement</code></li>
+          <li>Type : <strong>Application Web</strong> · Accès : <strong>Tout le monde</strong></li>
+          <li>Copie l'URL générée → colle ci-dessus ✓</li>
+        </ol>
+        <div style="margin-top:8px;font-size:10px;color:var(--muted);">Les données seront envoyées dans 2 onglets séparés : <strong>Estimations</strong> et <strong>Ventes réelles</strong>.</div>
+      </div>
+      <div class="code-blk">function doPost(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var data = JSON.parse(e.postData.contents);
+
+  var sheetName = data.type === 'estimation' ? 'Estimations' : 'Ventes réelles';
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) sheet = ss.insertSheet(sheetName);
+
+  if (sheet.getLastRow() === 0) {
+    var h = data.type === 'estimation'
+      ? ['Date','Article','Achat','Vente est.','Livraison',
+         'Plateforme','Commission%','Commission€',
+         'Total frais','Profit estimé','Marge%','ROI%']
+      : ['Date','Article','Achat','Vente réelle','Livraison',
+         'Plateforme','Commission%','Commission€',
+         'Total frais','Profit réel','Marge%','ROI%','Lié à'];
+    sheet.appendRow(h);
+  }
+
+  var row = [
+    data.date, data.item, data.buyPrice, data.sellPrice,
+    data.shipping, data.platform, data.platformPct,
+    data.platformFee, data.totalFees, data.profit,
+    data.margin, data.roi
+  ];
+  if (data.type === 'real') row.push(data.linkedEst || '');
+  sheet.appendRow(row);
+
+  return ContentService
+    .createTextOutput(JSON.stringify({status:'ok'}))
+    .setMimeType(ContentService.MimeType.JSON);
+}</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PARAMÈTRES ═══ -->
+<div class="page" id="page-settings">
+  <div class="sec-header">
+    <div class="sec-title">Paramètres</div>
+    <div class="sec-desc">// personnalise l'apparence de l'app</div>
+  </div>
+
+  <!-- Thèmes de fond -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="card-hd">🎨 Thème de fond</div>
+    <div class="card-bd">
+      <div class="theme-section-title">Choisir un fond</div>
+      <div class="palette-grid" id="bg-palette">
+
+        <button class="pal-btn active-theme" onclick="applyBg('paper')" id="pal-paper">
+          <div class="pal-preview" style="background:#f5f2eb;color:#1a1714;">Aa</div>
+          <span class="pal-name">Papier</span>
+        </button>
+
+        <button class="pal-btn" onclick="applyBg('dark')" id="pal-dark">
+          <div class="pal-preview" style="background:#0f0f14;color:#e8e8f0;">Aa</div>
+          <span class="pal-name">Nuit</span>
+        </button>
+
+        <button class="pal-btn" onclick="applyBg('slate')" id="pal-slate">
+          <div class="pal-preview" style="background:#1e2430;color:#c8d4e8;">Aa</div>
+          <span class="pal-name">Ardoise</span>
+        </button>
+
+        <button class="pal-btn" onclick="applyBg('forest')" id="pal-forest">
+          <div class="pal-preview" style="background:#0d1f15;color:#b8dfc8;">Aa</div>
+          <span class="pal-name">Forêt</span>
+        </button>
+
+        <button class="pal-btn" onclick="applyBg('rose')" id="pal-rose">
+          <div class="pal-preview" style="background:#fdf0f3;color:#2d1520;">Aa</div>
+          <span class="pal-name">Rose</span>
+        </button>
+
+        <button class="pal-btn" onclick="applyBg('ocean')" id="pal-ocean">
+          <div class="pal-preview" style="background:#eaf4fb;color:#0d2233;">Aa</div>
+          <span class="pal-name">Océan</span>
+        </button>
+
+        <button class="pal-btn" onclick="applyBg('charcoal')" id="pal-charcoal">
+          <div class="pal-preview" style="background:#1c1c1e;color:#f2f2f7;">Aa</div>
+          <span class="pal-name">Charbon</span>
+        </button>
+
+        <button class="pal-btn" onclick="applyBg('cream')" id="pal-cream">
+          <div class="pal-preview" style="background:#fffdf5;color:#2c2508;">Aa</div>
+          <span class="pal-name">Crème</span>
+        </button>
+
+        <button class="pal-btn" onclick="applyBg('purple')" id="pal-purple">
+          <div class="pal-preview" style="background:#16101f;color:#d4beff;">Aa</div>
+          <span class="pal-name">Violet</span>
+        </button>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Couleurs d'accent -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="card-hd">✏️ Couleur d'accentuation (estimation)</div>
+    <div class="card-bd">
+      <div class="theme-section-title">Teinte principale des estimations</div>
+      <div class="accent-grid" id="est-palette">
+
+        <button class="acc-btn active-accent" onclick="applyEst('amber')" id="acc-amber">
+          <div class="acc-swatch" style="background:#e8a020;"></div>
+          <span class="acc-name">Ambre</span>
+        </button>
+        <button class="acc-btn" onclick="applyEst('coral')" id="acc-coral">
+          <div class="acc-swatch" style="background:#e85d3a;"></div>
+          <span class="acc-name">Corail</span>
+        </button>
+        <button class="acc-btn" onclick="applyEst('violet')" id="acc-violet">
+          <div class="acc-swatch" style="background:#8b5cf6;"></div>
+          <span class="acc-name">Violet</span>
+        </button>
+        <button class="acc-btn" onclick="applyEst('sky')" id="acc-sky">
+          <div class="acc-swatch" style="background:#0ea5e9;"></div>
+          <span class="acc-name">Ciel</span>
+        </button>
+        <button class="acc-btn" onclick="applyEst('pink')" id="acc-pink">
+          <div class="acc-swatch" style="background:#ec4899;"></div>
+          <span class="acc-name">Rose</span>
+        </button>
+        <button class="acc-btn" onclick="applyEst('lime')" id="acc-lime">
+          <div class="acc-swatch" style="background:#84cc16;"></div>
+          <span class="acc-name">Lime</span>
+        </button>
+        <button class="acc-btn" onclick="applyEst('teal')" id="acc-teal">
+          <div class="acc-swatch" style="background:#14b8a6;"></div>
+          <span class="acc-name">Teal</span>
+        </button>
+        <button class="acc-btn" onclick="applyEst('gold')" id="acc-gold">
+          <div class="acc-swatch" style="background:#f59e0b;"></div>
+          <span class="acc-name">Or</span>
+        </button>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Preview + Reset -->
+  <div class="card">
+    <div class="card-hd">👁️ Aperçu du thème actif</div>
+    <div class="card-bd">
+      <div class="preview-box" id="theme-preview-box">
+        Le thème s'applique instantanément sur toute l'application.
+      </div>
+      <button class="reset-btn" onclick="resetTheme()">↺ Remettre le thème par défaut</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Data ──
+const PLATS = {vinted:5,ebay:12.8,leboncoin:7,vestiaire:15,depop:10,etsy:6.5};
+let ests = [];   // estimations
+let reals = [];  // confirmed sales
+let linkedId = null;
+
+// ── Tabs ──
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('page-' + tab).classList.add('active');
+    if (tab === 'dashboard') renderDash();
+  });
+});
+
+// ── Calc helpers ──
+const gv = id => parseFloat(document.getElementById(id).value) || 0;
+const fmt = n => n.toFixed(2) + ' €';
+const fmtS = n => (n > 0 ? '+' : '') + n.toFixed(2) + ' €';
+
+function compute(buy, sell, ship, pct) {
+  const comm = sell * (pct / 100);
+  const fees = ship + comm;
+  const profit = sell - buy - fees;
+  const margin = sell > 0 ? (profit / sell) * 100 : 0;
+  const roi = buy > 0 ? (profit / buy) * 100 : 0;
+  return { comm, fees, profit, margin, roi };
+}
+
+// ── Estimation ──
+function calcEst() {
+  const r = compute(gv('e-buy'), gv('e-sell'), gv('e-ship'), gv('e-pct'));
+  document.getElementById('e-b-ship').textContent = fmt(gv('e-ship'));
+  document.getElementById('e-b-comm').textContent = fmt(r.comm);
+  document.getElementById('e-b-total').textContent = fmt(r.fees);
+  const el = document.getElementById('e-profit');
+  el.textContent = fmt(r.profit);
+  el.className = 'rv ' + (r.profit > 0 ? 'ec' : r.profit < 0 ? 'neg' : 'nc');
+  document.getElementById('e-margin').textContent = gv('e-sell') > 0 ? r.margin.toFixed(1) + '%' : '—';
+  document.getElementById('e-roi').textContent = gv('e-buy') > 0 ? r.roi.toFixed(1) + '%' : '—';
+}
+
+function setPlatEst() {
+  const p = document.getElementById('e-plat').value;
+  if (PLATS[p]) document.getElementById('e-pct').value = PLATS[p];
+  calcEst();
+}
+
+function resetEst() {
+  ['e-name','e-buy','e-sell','e-ship'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('e-pct').value = 0;
+  document.getElementById('e-plat').value = 'custom';
+  calcEst();
+}
+
+function saveEst() {
+  const buy = gv('e-buy'), sell = gv('e-sell');
+  if (!buy || !sell) { toast('⚠️ Remplis achat et vente estimée', 'err'); return; }
+  const ship = gv('e-ship'), pct = gv('e-pct');
+  const r = compute(buy, sell, ship, pct);
+  const entry = {
+    id: Date.now(),
+    name: document.getElementById('e-name').value || 'Article sans nom',
+    buyPrice: buy, sellPrice: sell, shipping: ship,
+    platform: document.getElementById('e-plat').value,
+    platformPct: pct, platformFee: +r.comm.toFixed(2),
+    totalFees: +r.fees.toFixed(2), profit: +r.profit.toFixed(2),
+    margin: +r.margin.toFixed(2), roi: +r.roi.toFixed(2),
+    date: new Date().toLocaleString('fr-FR'), sold: false
+  };
+  ests.unshift(entry);
+  refreshEstSelect();
+  sendSheets({ ...entry, type: 'estimation', item: entry.name });
+  toast('📋 Estimation enregistrée !', 'ok');
+  resetEst();
+}
+
+// ── Real ──
+function calcReal() {
+  const buy = gv('r-buy'), sell = gv('r-sell'), ship = gv('r-ship'), pct = gv('r-pct');
+  const r = compute(buy, sell, ship, pct);
+  document.getElementById('r-b-ship').textContent = fmt(ship);
+  document.getElementById('r-b-comm').textContent = fmt(r.comm);
+  document.getElementById('r-b-total').textContent = fmt(r.fees);
+  const el = document.getElementById('r-profit');
+  el.textContent = fmt(r.profit);
+  el.className = 'rv ' + (r.profit > 0 ? 'pos' : r.profit < 0 ? 'neg' : 'nc');
+  document.getElementById('r-margin').textContent = sell > 0 ? r.margin.toFixed(1) + '%' : '—';
+  document.getElementById('r-roi').textContent = buy > 0 ? r.roi.toFixed(1) + '%' : '—';
+  // diff
+  if (linkedId) {
+    const est = ests.find(e => e.id === linkedId);
+    if (est) {
+      const delta = r.profit - est.profit;
+      document.getElementById('diff-box').style.display = 'block';
+      document.getElementById('diff-est').textContent = fmt(est.profit);
+      document.getElementById('diff-real').textContent = fmt(r.profit);
+      const de = document.getElementById('diff-delta');
+      de.textContent = fmtS(delta);
+      de.style.color = delta >= 0 ? 'var(--real)' : 'var(--neg)';
+    }
+  } else {
+    document.getElementById('diff-box').style.display = 'none';
+  }
+}
+
+function setPlatReal() {
+  const p = document.getElementById('r-plat').value;
+  if (PLATS[p]) document.getElementById('r-pct').value = PLATS[p];
+  calcReal();
+}
+
+function loadFromEst() {
+  const sel = document.getElementById('r-link').value;
+  if (!sel) { linkedId = null; resetReal(); return; }
+  linkedId = parseInt(sel);
+  const est = ests.find(e => e.id === linkedId);
+  if (!est) return;
+  document.getElementById('r-name').value = est.name;
+  document.getElementById('r-buy').value = est.buyPrice;
+  document.getElementById('r-ship').value = est.shipping;
+  document.getElementById('r-plat').value = est.platform;
+  document.getElementById('r-pct').value = est.platformPct;
+  document.getElementById('r-sell').value = '';
+  calcReal();
+}
+
+function resetReal() {
+  ['r-name','r-buy','r-sell','r-ship'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('r-pct').value = 0;
+  document.getElementById('r-plat').value = 'custom';
+  document.getElementById('r-link').value = '';
+  linkedId = null;
+  document.getElementById('diff-box').style.display = 'none';
+  calcReal();
+}
+
+function saveReal() {
+  const buy = gv('r-buy'), sell = gv('r-sell');
+  if (!buy || !sell) { toast('⚠️ Remplis achat et vente réelle', 'err'); return; }
+  const ship = gv('r-ship'), pct = gv('r-pct');
+  const r = compute(buy, sell, ship, pct);
+  const entry = {
+    id: Date.now(),
+    name: document.getElementById('r-name').value || 'Article sans nom',
+    buyPrice: buy, sellPrice: sell, shipping: ship,
+    platform: document.getElementById('r-plat').value,
+    platformPct: pct, platformFee: +r.comm.toFixed(2),
+    totalFees: +r.fees.toFixed(2), profit: +r.profit.toFixed(2),
+    margin: +r.margin.toFixed(2), roi: +r.roi.toFixed(2),
+    date: new Date().toLocaleString('fr-FR'),
+    linkedEstId: linkedId || null
+  };
+  reals.unshift(entry);
+  if (linkedId) {
+    const est = ests.find(e => e.id === linkedId);
+    if (est) est.sold = true;
+  }
+  refreshEstSelect();
+  const linkedName = linkedId ? (ests.find(e => e.id === linkedId)?.name || '') : '';
+  sendSheets({ ...entry, type: 'real', item: entry.name, linkedEst: linkedName });
+  toast('✅ Vente confirmée !', 'ok');
+  resetReal();
+}
+
+// ── Dashboard ──
+function renderDash() {
+  const totalEst = ests.reduce((s, e) => s + e.profit, 0);
+  const totalReal = reals.reduce((s, e) => s + e.profit, 0);
+  const pending = ests.filter(e => !e.sold).length;
+  const linked = reals.filter(r => r.linkedEstId);
+  let rate = null;
+  if (linked.length) {
+    const ratios = linked.map(r => {
+      const est = ests.find(e => e.id === r.linkedEstId);
+      return est && est.profit !== 0 ? (r.profit / est.profit) : null;
+    }).filter(x => x !== null);
+    if (ratios.length) rate = ratios.reduce((a,b) => a+b, 0) / ratios.length * 100;
+  }
+  document.getElementById('kpi-et').textContent = totalEst.toFixed(2) + ' €';
+  document.getElementById('kpi-ec').textContent = ests.length + ' article(s) en prévision';
+  document.getElementById('kpi-rt').textContent = totalReal.toFixed(2) + ' €';
+  document.getElementById('kpi-rc').textContent = reals.length + ' vente(s) confirmée(s)';
+  document.getElementById('kpi-pend').textContent = pending;
+  document.getElementById('kpi-rate').textContent = rate !== null ? rate.toFixed(1) + '%' : '—';
+  document.getElementById('rate-bar').style.width = rate !== null ? Math.min(Math.max(rate, 0), 100) + '%' : '0%';
+
+  const body = document.getElementById('ct-body');
+  if (!ests.length && !reals.length) {
+    body.innerHTML = '<div class="empty"><div class="empty-ico">📭</div>Aucune donnée — commence par enregistrer une estimation !</div>';
+    return;
+  }
+
+  let rows = '';
+  ests.forEach(est => {
+    const real = reals.find(r => r.linkedEstId === est.id);
+    const delta = real ? real.profit - est.profit : null;
+    rows += `<div class="ct-row">
+      <span class="ct-name">${est.name}</span>
+      <span class="ct-ev">${est.profit >= 0 ? '+' : ''}${est.profit.toFixed(2)} €</span>
+      <span class="ct-rv ${real ? (real.profit >= 0 ? 'pos' : 'neg') : 'pend'}">${real ? (real.profit >= 0 ? '+' : '') + real.profit.toFixed(2) + ' €' : '—'}</span>
+      <span class="delta ${delta !== null ? (delta >= 0 ? 'up' : 'dn') : 'pend'}">${delta !== null ? (delta > 0 ? '+' : '') + delta.toFixed(2) + ' €' : '—'}</span>
+      <span class="badge ${real ? 'b-sold' : 'b-pend'}">${real ? 'Vendu' : 'En cours'}</span>
+    </div>`;
+  });
+  reals.filter(r => !r.linkedEstId).forEach(r => {
+    rows += `<div class="ct-row">
+      <span class="ct-name">${r.name} <span style="font-size:9px;color:var(--muted)">(sans prévision)</span></span>
+      <span class="ct-ev">—</span>
+      <span class="ct-rv ${r.profit >= 0 ? 'pos' : 'neg'}">${r.profit >= 0 ? '+' : ''}${r.profit.toFixed(2)} €</span>
+      <span class="delta pend">—</span>
+      <span class="badge b-sold">Vendu</span>
+    </div>`;
+  });
+  body.innerHTML = rows;
+}
+
+// ── Sheets ──
+function toggleSheets() {
+  const b = document.getElementById('s-body');
+  const a = document.getElementById('s-arrow');
+  b.classList.toggle('open');
+  a.textContent = b.classList.contains('open') ? '▴' : '▾';
+}
+
+async function testHook() {
+  const url = document.getElementById('webhook').value.trim();
+  if (!url) { setSMsg('err', '⚠️ Colle d\'abord l\'URL'); return; }
+  setSMsg('load', '⟳ Test en cours...');
+  try {
+    await fetch(url, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body: JSON.stringify({test:true}) });
+    setSMsg('ok', '✓ Connexion OK — URL valide !');
+  } catch(e) { setSMsg('err', '✗ Connexion échouée. Vérifie l\'URL et le déploiement.'); }
+}
+
+function setSMsg(type, msg) {
+  const el = document.getElementById('smsg');
+  el.className = 'smsg ' + type;
+  el.textContent = msg;
+}
+
+async function sendSheets(data) {
+  const url = document.getElementById('webhook').value.trim();
+  if (!url) return;
+  try { await fetch(url, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) }); }
+  catch(e) { console.warn('Sheets error', e); }
+}
+
+function refreshEstSelect() {
+  const sel = document.getElementById('r-link');
+  const unsold = ests.filter(e => !e.sold);
+  sel.innerHTML = '<option value="">— Nouvelle entrée manuelle —</option>' +
+    unsold.map(e => `<option value="${e.id}">${e.name} (estimé: ${e.profit >= 0 ? '+' : ''}${e.profit.toFixed(2)} €)</option>`).join('');
+}
+
+// ── Toast ──
+function toast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.className = 'toast', 3000);
+}
+
+// ── Themes ──
+const BG_THEMES = {
+  paper:    { bg:'#f5f2eb', bg2:'#ece8df', ink:'#1a1714', ink2:'#3d3830', muted:'#9a9080', border:'#d4cfc4', surface:'#ffffff', shadow:'0 2px 12px rgba(26,23,20,0.08)' },
+  dark:     { bg:'#0f0f14', bg2:'#18181f', ink:'#e8e8f0', ink2:'#b0b0c0', muted:'#60607a', border:'#2a2a3a', surface:'#16161e', shadow:'0 2px 12px rgba(0,0,0,0.4)' },
+  slate:    { bg:'#1e2430', bg2:'#252d3d', ink:'#c8d4e8', ink2:'#90a0bc', muted:'#5a6880', border:'#2e3a50', surface:'#242e40', shadow:'0 2px 12px rgba(0,0,0,0.3)' },
+  forest:   { bg:'#0d1f15', bg2:'#122a1c', ink:'#b8dfc8', ink2:'#80b090', muted:'#4a7060', border:'#1e3828', surface:'#102018', shadow:'0 2px 12px rgba(0,0,0,0.4)' },
+  rose:     { bg:'#fdf0f3', bg2:'#f8e4ea', ink:'#2d1520', ink2:'#6b3048', muted:'#b07090', border:'#e8c0d0', surface:'#ffffff', shadow:'0 2px 12px rgba(160,60,90,0.1)' },
+  ocean:    { bg:'#eaf4fb', bg2:'#d8ecf8', ink:'#0d2233', ink2:'#1a4060', muted:'#5080a0', border:'#b0d4ec', surface:'#ffffff', shadow:'0 2px 12px rgba(13,50,100,0.08)' },
+  charcoal: { bg:'#1c1c1e', bg2:'#2c2c2e', ink:'#f2f2f7', ink2:'#c0c0c8', muted:'#6060708', border:'#3a3a3c', surface:'#242426', shadow:'0 2px 12px rgba(0,0,0,0.5)' },
+  cream:    { bg:'#fffdf5', bg2:'#f7f3e0', ink:'#2c2508', ink2:'#5a4e20', muted:'#9a8a50', border:'#e0d8a8', surface:'#ffffff', shadow:'0 2px 12px rgba(80,60,0,0.08)' },
+  purple:   { bg:'#16101f', bg2:'#1e1530', ink:'#d4beff', ink2:'#a090d0', muted:'#6050a0', border:'#2e2048', surface:'#1c1428', shadow:'0 2px 12px rgba(0,0,0,0.5)' },
+};
+
+const EST_ACCENTS = {
+  amber:  { est:'#e8a020', estBg:'#fff8ec', estBorder:'#f0d090' },
+  coral:  { est:'#e85d3a', estBg:'#fef3f0', estBorder:'#f5c0b0' },
+  violet: { est:'#8b5cf6', estBg:'#f5f0ff', estBorder:'#c4a8f8' },
+  sky:    { est:'#0ea5e9', estBg:'#f0f9ff', estBorder:'#90d4f8' },
+  pink:   { est:'#ec4899', estBg:'#fdf2f8', estBorder:'#f8b0d8' },
+  lime:   { est:'#84cc16', estBg:'#f7fee7', estBorder:'#c0e870' },
+  teal:   { est:'#14b8a6', estBg:'#f0fdfa', estBorder:'#80dcd4' },
+  gold:   { est:'#f59e0b', estBg:'#fffbeb', estBorder:'#fcd070' },
+};
+
+let currentBg = 'paper';
+let currentEst = 'amber';
+
+function applyBg(key) {
+  const t = BG_THEMES[key];
+  if (!t) return;
+  currentBg = key;
+  const r = document.documentElement.style;
+  r.setProperty('--bg', t.bg);
+  r.setProperty('--bg2', t.bg2);
+  r.setProperty('--ink', t.ink);
+  r.setProperty('--ink2', t.ink2);
+  r.setProperty('--muted', t.muted);
+  r.setProperty('--border', t.border);
+  r.setProperty('--surface', t.surface);
+  r.setProperty('--shadow', t.shadow);
+  // Update active btn
+  document.querySelectorAll('.pal-btn').forEach(b => b.classList.remove('active-theme'));
+  const btn = document.getElementById('pal-' + key);
+  if (btn) btn.classList.add('active-theme');
+  updatePreview();
+  savePrefs();
+}
+
+function applyEst(key) {
+  const a = EST_ACCENTS[key];
+  if (!a) return;
+  currentEst = key;
+  const r = document.documentElement.style;
+  r.setProperty('--est', a.est);
+  r.setProperty('--est-bg', a.estBg);
+  r.setProperty('--est-border', a.estBorder);
+  // brand dot
+  document.querySelector('.brand-dot').style.background = a.est;
+  // Update active btn
+  document.querySelectorAll('.acc-btn').forEach(b => b.classList.remove('active-accent'));
+  const btn = document.getElementById('acc-' + key);
+  if (btn) btn.classList.add('active-accent');
+  updatePreview();
+  savePrefs();
+}
+
+function updatePreview() {
+  const bg = BG_THEMES[currentBg];
+  const est = EST_ACCENTS[currentEst];
+  const box = document.getElementById('theme-preview-box');
+  box.style.background = bg.bg2;
+  box.style.border = '1px solid ' + bg.border;
+  box.style.color = bg.muted;
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;">
+      <span style="background:${bg.bg};color:${bg.ink};padding:6px 14px;border-radius:6px;border:1px solid ${bg.border};font-size:11px;font-weight:600;">Fond</span>
+      <span style="background:${est.estBg};color:${est.est};padding:6px 14px;border-radius:6px;border:1px solid ${est.estBorder};font-size:11px;font-weight:600;">Estimation</span>
+      <span style="background:var(--real-bg);color:var(--real);padding:6px 14px;border-radius:6px;border:1px solid var(--real-border);font-size:11px;font-weight:600;">Réel</span>
+      <span style="background:${bg.surface};color:${bg.ink2};padding:6px 14px;border-radius:6px;border:1px solid ${bg.border};font-size:11px;">Surface</span>
+    </div>`;
+}
+
+function resetTheme() {
+  applyBg('paper');
+  applyEst('amber');
+  toast('↺ Thème réinitialisé', 'ok');
+}
+
+function savePrefs() {
+  try { localStorage.setItem('flipcalc-theme', JSON.stringify({ bg: currentBg, est: currentEst })); } catch(e) {}
+}
+
+function loadPrefs() {
+  try {
+    const p = JSON.parse(localStorage.getItem('flipcalc-theme') || '{}');
+    if (p.bg) applyBg(p.bg);
+    if (p.est) applyEst(p.est);
+  } catch(e) {}
+}
+
+loadPrefs();
+updatePreview();
+
+// Init
+calcEst();
+calcReal();
+</script>
+</body>
+</html>
