@@ -254,6 +254,31 @@ body{background:var(--bg);color:var(--ink);font-family:'Fira Code',monospace;min
 .steps{margin-top:10px;font-size:11px;color:var(--ink2);line-height:1.9;padding-left:14px;}
 code{background:var(--bg2);padding:1px 5px;border-radius:3px;font-size:10px;color:var(--est);}
 
+/* ── QTY STEPPER ── */
+.qty-stepper{
+  display:inline-flex;align-items:center;gap:0;
+  border:1.5px solid var(--border);border-radius:8px;
+  overflow:hidden;background:var(--bg);height:40px;
+}
+.qty-btn{
+  width:36px;height:100%;border:none;background:none;
+  cursor:pointer;font-size:18px;font-weight:700;color:var(--ink2);
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s,color .15s;flex-shrink:0;
+  font-family:'Bricolage Grotesque',sans-serif;
+}
+.qty-btn:hover{background:var(--bg2);color:var(--ink);}
+.qty-btn:active{background:var(--border);}
+.qty-display{
+  min-width:38px;text-align:center;
+  font-family:'Bricolage Grotesque',sans-serif;
+  font-weight:800;font-size:15px;color:var(--ink);
+  border-left:1px solid var(--border);border-right:1px solid var(--border);
+  padding:0 4px;height:100%;display:flex;align-items:center;justify-content:center;
+}
+.name-qty-row{display:flex;align-items:flex-end;gap:12px;}
+.name-qty-row .field:first-child{flex:1;}
+
 /* ── DIFF BOX ── */
 .diff-box{display:none;margin-top:10px;padding:12px;border-radius:8px;background:var(--bg2);border:1px solid var(--border);font-size:11px;}
 
@@ -393,17 +418,24 @@ code{background:var(--bg2);padding:1px 5px;border-radius:3px;font-size:10px;colo
     <div class="card-hd">📦 Infos article</div>
     <div class="card-bd">
       <div class="fg">
-        <div class="field ff">
-          <label>Nom de l'article</label>
-          <div class="iw"><input type="text" id="e-name" placeholder="ex: Nike Air Max 90 – T42"></div>
+        <div class="ff name-qty-row">
+          <div class="field">
+            <label>Nom de l'article</label>
+            <div class="iw"><input type="text" id="e-name" placeholder="ex: Nike Air Max 90 – T42"></div>
+          </div>
+          <div class="field">
+            <label>Quantité</label>
+            <div class="qty-stepper">
+              <button class="qty-btn" onclick="stepQty('e-qty',-1)">−</button>
+              <div class="qty-display" id="e-qty-disp">1</div>
+              <button class="qty-btn" onclick="stepQty('e-qty',1)">+</button>
+              <input type="hidden" id="e-qty" value="1">
+            </div>
+          </div>
         </div>
         <div class="field">
           <label>Prix d'achat (unité)</label>
           <div class="iw"><input class="fe" type="number" id="e-buy" placeholder="0.00" step="0.01" oninput="calcEst()"><span class="sfx">€</span></div>
-        </div>
-        <div class="field">
-          <label>Quantité</label>
-          <div class="iw"><input class="fe" type="number" id="e-qty" placeholder="1" min="1" step="1" oninput="calcEst()" value="1"><span class="sfx">u.</span></div>
         </div>
         <div class="field">
           <label>Prix de vente estimé (unité)</label>
@@ -475,17 +507,24 @@ code{background:var(--bg2);padding:1px 5px;border-radius:3px;font-size:10px;colo
     <div class="card-hd">💰 Vente réelle</div>
     <div class="card-bd">
       <div class="fg">
-        <div class="field ff">
-          <label>Nom de l'article</label>
-          <div class="iw"><input type="text" id="r-name" placeholder="ex: Nike Air Max 90 – T42"></div>
+        <div class="ff name-qty-row">
+          <div class="field">
+            <label>Nom de l'article</label>
+            <div class="iw"><input type="text" id="r-name" placeholder="ex: Nike Air Max 90 – T42"></div>
+          </div>
+          <div class="field">
+            <label>Quantité</label>
+            <div class="qty-stepper">
+              <button class="qty-btn" onclick="stepQty('r-qty',-1)">−</button>
+              <div class="qty-display" id="r-qty-disp">1</div>
+              <button class="qty-btn" onclick="stepQty('r-qty',1)">+</button>
+              <input type="hidden" id="r-qty" value="1">
+            </div>
+          </div>
         </div>
         <div class="field">
           <label>Prix d'achat réel (unité)</label>
           <div class="iw"><input class="fr" type="number" id="r-buy" placeholder="0.00" step="0.01" oninput="calcReal()"><span class="sfx">€</span></div>
-        </div>
-        <div class="field">
-          <label>Quantité</label>
-          <div class="iw"><input class="fr" type="number" id="r-qty" placeholder="1" min="1" step="1" oninput="calcReal()" value="1"><span class="sfx">u.</span></div>
         </div>
         <div class="field">
           <label>Prix de vente réel (unité)</label>
@@ -661,12 +700,22 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 // ══════════════════════════════════════════
 const gv  = id => parseFloat(document.getElementById(id).value) || 0;
 const gi  = id => parseInt(document.getElementById(id).value) || 1;
+
+function stepQty(id, delta) {
+  const el = document.getElementById(id);
+  const disp = document.getElementById(id + '-disp');
+  let val = parseInt(el.value) || 1;
+  val = Math.max(1, val + delta);
+  el.value = val;
+  disp.textContent = val;
+  if (id === 'e-qty') calcEst(); else calcReal();
+}
 const fmt = n  => n.toFixed(2) + ' €';
 const fmtS = n => (n > 0 ? '+' : '') + n.toFixed(2) + ' €';
 
 function compute(buyUnit, qty, sellUnit, ship, comm) {
-  const buyTotal = buyUnit * qty;
-  const profit   = sellUnit - buyTotal - ship - comm;
+  const buyTotal = buyUnit * qty + ship +com;
+  const profit   = sellUnit - buyTotal;
   return { buyTotal, profit };
 }
 
@@ -694,6 +743,7 @@ function calcEst() {
 function resetEst() {
   ['e-name','e-buy','e-sell','e-ship','e-comm'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('e-qty').value = 1;
+  document.getElementById('e-qty-disp').textContent = 1;
   calcEst();
 }
 
@@ -786,6 +836,7 @@ function loadFromEst() {
   document.getElementById('r-name').value = est.name;
   document.getElementById('r-buy').value  = est.buyUnit;
   document.getElementById('r-qty').value  = est.qty;
+  document.getElementById('r-qty-disp').textContent = est.qty;
   document.getElementById('r-ship').value = est.shipping;
   document.getElementById('r-comm').value = est.commission;
   document.getElementById('r-sell').value = '';
@@ -795,6 +846,7 @@ function loadFromEst() {
 function resetReal() {
   ['r-name','r-buy','r-sell','r-ship','r-comm'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('r-qty').value   = 1;
+  document.getElementById('r-qty-disp').textContent = 1;
   document.getElementById('r-link').value  = '';
   linkedId = null;
   document.getElementById('diff-box').style.display = 'none';
@@ -1045,4 +1097,4 @@ calcEst();
 calcReal();
 </script>
 </body>
-</html>
+</html>c
