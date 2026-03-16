@@ -47,17 +47,14 @@ body{background:var(--bg);color:var(--ink);font-family:'Fira Code',monospace;min
 .tab-btn.t-real.active{box-shadow:inset 0 -3px 0 var(--real);}
 .tab-btn.t-dash.active{box-shadow:inset 0 -3px 0 var(--ink);}
 
-/* Settings gear bubble */
+/* Settings gear — inside nav */
 .gear-btn{
-  position:fixed;top:12px;right:14px;z-index:200;
-  width:40px;height:40px;border-radius:50%;
-  background:var(--surface);border:2px solid var(--border);
-  box-shadow:var(--shadow);cursor:pointer;
+  padding:0 16px;height:100%;background:none;border:none;border-left:1px solid var(--border);
+  cursor:pointer;font-size:18px;transition:all .2s;flex-shrink:0;
   display:flex;align-items:center;justify-content:center;
-  font-size:18px;transition:all .2s;
 }
-.gear-btn:hover{transform:rotate(30deg);border-color:var(--ink);}
-.gear-btn.active-gear{background:var(--ink);border-color:var(--ink);}
+.gear-btn:hover{background:var(--bg2);transform:rotate(30deg);}
+.gear-btn.active-gear{background:var(--ink);color:var(--bg);}
 
 /* Settings modal overlay */
 .settings-overlay{
@@ -298,9 +295,6 @@ code{background:var(--bg2);padding:1px 5px;border-radius:3px;font-size:10px;colo
 </head>
 <body>
 
-<!-- Settings gear bubble -->
-<button class="gear-btn" id="gear-btn" onclick="toggleSettings()" title="Paramètres">⚙️</button>
-
 <!-- Settings overlay -->
 <div class="settings-overlay" id="settings-overlay" onclick="closeSettings()"></div>
 
@@ -404,6 +398,7 @@ code{background:var(--bg2);padding:1px 5px;border-radius:3px;font-size:10px;colo
     <button class="tab-btn t-real" data-tab="reel">✅ Gains réels</button>
     <button class="tab-btn t-dash" data-tab="dashboard">📊 Dashboard</button>
   </div>
+  <button class="gear-btn" id="gear-btn" onclick="toggleSettings()">⚙️</button>
 </nav>
 
 <!-- ═══════════════ ESTIMATION ═══════════════ -->
@@ -629,42 +624,65 @@ code{background:var(--bg2);padding:1px 5px;border-radius:3px;font-size:10px;colo
     </div>
     <div class="s-body" id="s-body">
       <div class="s-url-row">
-        <div class="iw"><input type="text" id="webhook" placeholder="https://script.google.com/macros/s/..."></div>
+        <div class="iw"><input type="text" id="webhook" placeholder="https://script.google.com/macros/s/..." oninput="saveWebhook()"></div>
         <button class="btn btn-ghost" onclick="testHook()">Tester</button>
       </div>
       <div class="smsg" id="smsg"></div>
       <div style="margin-top:14px;font-size:11px;color:var(--ink2);">
-        <strong style="font-family:'Bricolage Grotesque',sans-serif;font-size:13px;">Setup en 2 minutes :</strong>
+        <strong style="font-family:'Bricolage Grotesque',sans-serif;font-size:13px;">Setup en 3 minutes :</strong>
         <ol class="steps">
           <li>Ouvre <strong>Google Sheets</strong> → nouveau fichier</li>
           <li>Menu <code>Extensions</code> → <code>Apps Script</code></li>
-          <li>Colle le code → <code>Déployer</code> → <code>Nouveau déploiement</code></li>
-          <li>Type : <strong>Application Web</strong> · Accès : <strong>Tout le monde</strong></li>
-          <li>Copie l'URL générée → colle ci-dessus ✓</li>
+          <li>Supprime le code existant et colle le code ci-dessous</li>
+          <li>Clique <code>Déployer</code> → <code>Nouveau déploiement</code></li>
+          <li>Type : <strong>Application Web</strong> · Exécuter en tant que : <strong>Moi</strong> · Accès : <strong>Tout le monde</strong></li>
+          <li>Clique <strong>Autoriser</strong> puis copie l'URL → colle ci-dessus ✓</li>
         </ol>
+        <div style="margin-top:8px;padding:8px 10px;background:var(--est-bg);border:1px solid var(--est-border);border-radius:7px;color:var(--est);font-size:10px;">
+          ⚠️ À chaque modification du script, recrée un <strong>nouveau déploiement</strong> (pas "gérer les déploiements"). L'URL change à chaque fois.
+        </div>
       </div>
       <div class="code-blk">function doPost(e) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var data = JSON.parse(e.postData.contents);
-  var sheetName = data.type === 'estimation' ? 'Estimations' : 'Ventes réelles';
-  var sheet = ss.getSheetByName(sheetName);
-  if (!sheet) sheet = ss.insertSheet(sheetName);
-  if (sheet.getLastRow() === 0) {
-    var h = data.type === 'estimation'
-      ? ['Date','Article','Achat/u','Qté','Achat total',
-         'Vente est./u','Livraison','Commission','Profit estimé']
-      : ['Date','Article','Achat/u','Qté','Achat total',
-         'Vente réelle/u','Livraison','Commission','Profit réel','Lié à'];
-    sheet.appendRow(h);
+  try {
+    var params = e.parameter;
+    var data = JSON.parse(params.payload);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheetName = data.type === 'estimation'
+      ? 'Estimations' : 'Ventes réelles';
+    var sheet = ss.getSheetByName(sheetName);
+    if (!sheet) sheet = ss.insertSheet(sheetName);
+    if (sheet.getLastRow() === 0) {
+      var h = data.type === 'estimation'
+        ? ['Date','Article','Achat/u','Qté',
+           'Achat total','Vente est./u',
+           'Livraison','Commission','Profit estimé']
+        : ['Date','Article','Achat/u','Qté',
+           'Achat total','Vente réelle/u',
+           'Livraison','Commission',
+           'Profit réel','Lié à'];
+      sheet.appendRow(h);
+    }
+    var row = [
+      data.date, data.item, data.buyUnit,
+      data.qty, data.buyTotal, data.sellUnit,
+      data.shipping, data.commission, data.profit
+    ];
+    if (data.type === 'real')
+      row.push(data.linkedEst || '');
+    sheet.appendRow(row);
+    return ContentService
+      .createTextOutput(JSON.stringify({status:'ok'}))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({status:'error',msg:err.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
   }
-  var row = [
-    data.date, data.item, data.buyUnit, data.qty, data.buyTotal,
-    data.sellUnit, data.shipping, data.commission, data.profit
-  ];
-  if (data.type === 'real') row.push(data.linkedEst || '');
-  sheet.appendRow(row);
+}
+
+function doGet(e) {
   return ContentService
-    .createTextOutput(JSON.stringify({status:'ok'}))
+    .createTextOutput(JSON.stringify({status:'alive'}))
     .setMimeType(ContentService.MimeType.JSON);
 }</div>
     </div>
@@ -978,23 +996,42 @@ function toggleSheets() {
 }
 async function testHook() {
   const url = document.getElementById('webhook').value.trim();
-  if (!url) { setSMsg('err','⚠️ Colle d\'abord l\'URL'); return; }
-  setSMsg('load','⟳ Test en cours...');
+  if (!url) { setSMsg('err','⚠️ Colle d\'abord l\'URL du déploiement'); return; }
+  setSMsg('load','⟳ Test en cours…');
   try {
-    await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({test:true})});
-    setSMsg('ok','✓ Connexion OK !');
-  } catch(e) { setSMsg('err','✗ Connexion échouée.'); }
+    const body = new URLSearchParams({payload: JSON.stringify({test:true, type:'test'})});
+    const resp = await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {'Content-Type':'application/x-www-form-urlencoded'},
+      body: body.toString()
+    });
+    // no-cors always resolves — if we get here, the URL is reachable
+    setSMsg('ok','✓ Signal envoyé ! Vérifie que la ligne apparaît dans Sheets.');
+  } catch(e) {
+    setSMsg('err','✗ URL inaccessible — vérifie le déploiement.');
+  }
 }
 function setSMsg(type, msg) {
   const el = document.getElementById('smsg');
   el.className = 'smsg ' + type;
   el.textContent = msg;
 }
+function saveWebhook() {
+  localStorage.setItem('flipcalc_webhook', document.getElementById('webhook').value.trim());
+}
 async function sendSheets(data) {
   const url = document.getElementById('webhook').value.trim();
   if (!url) return;
-  try { await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}); }
-  catch(e) {}
+  try {
+    const body = new URLSearchParams({payload: JSON.stringify(data)});
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {'Content-Type':'application/x-www-form-urlencoded'},
+      body: body.toString()
+    });
+  } catch(e) {}
 }
 
 // ══════════════════════════════════════════
@@ -1095,6 +1132,9 @@ function loadPrefs() {
 loadPrefs();
 calcEst();
 calcReal();
+// Restore saved webhook URL
+const savedHook = localStorage.getItem('flipcalc_webhook');
+if (savedHook) document.getElementById('webhook').value = savedHook;
 </script>
 </body>
 </html>
